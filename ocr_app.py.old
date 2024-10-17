@@ -1,0 +1,146 @@
+import os
+import cv2
+import pytesseract
+import re
+import spacy
+from PIL import Image
+import pyheif
+import numpy as np
+
+def convert_heic_to_jpeg(heic_path, jpeg_path):
+    # Load HEIC image using pyheif
+    heif_file = pyheif.read(heic_path)
+
+    # Convert the HEIC to a Pillow Image
+    image = Image.frombytes(
+        heif_file.mode, 
+        heif_file.size, 
+        heif_file.data, 
+        "raw", 
+        heif_file.mode, 
+        heif_file.stride
+    )
+
+    # Save the image as JPEG with reduced quality to make it smaller
+    image.save(jpeg_path, "JPEG", quality=70)
+
+def preprocess_image(image_path):
+    # Load image using OpenCV
+    image = cv2.imread(image_path)
+
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Apply thresholding to make the text more visible
+    _, binary_image = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+
+    return binary_image
+
+def extract_text(image):
+    return pytesseract.image_to_string(image)
+
+def detect_text_regions(image_path):
+    # Load the pre-trained EAST model for text detection
+    net = cv2.dnn.readNet("frozen_east_text_detection.pb")
+    image = cv2.imread(image_path)
+    orig = image.copy()
+    (H, W) = image.shape[:2]
+
+    # Define the two output layers we need from the EAST model
+    layer_names = [
+        "feature_fusion/Conv_7/Sigmoid",
+        "feature_fusion/concat_3"
+    ]
+
+    # Prepare the image for input to the network
+    blob = cv2.dnn.blobFromImage(image, 1.0, (W, H),
+                                 (123.68, 116.78, 103.94), swapRB=True, crop=False)
+    net.setInput(blob)
+    (scores, geometry) = net.forward(layer_names)
+
+    # Decode the predictions and apply non-maxima suppression
+    rectangles = []
+    confidences = []
+
+    # Loop through rows and columns to extract bounding boxes and confidences
+    for y in range(0, geometry.shape[2]):
+        for x in range(0, geometry.shape[3]):
+            score = scores[0, 0, y, x]
+            if score > 0.5:
+                offset_x, offset_y = (x * 4.0, y * 4.0)
+                angle = geometry[0, 4, y, x]
+                h = geometry[0, 0, y, x]
+                w = geometry[0, 1, y, x]
+
+                cos_a = np.cos(angle)
+                sin_a = np.sin(angle)
+
+                end_x = int(offset_x + (cos_a * w) + (sin_a * h))
+                end_y = int(offset_y + (sin_a * w) + (cos_a * h))
+
+                rectangles.append((end_x, end_y))
+
+    return rectangles
+
+def parse_contact_details(text):
+    # Extract email using regex
+    email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
+    email = re.findall(email_pattern, text)
+
+    # Extract phone number using regex
+    phone_pattern = r'\+?\d[\d -]{8,}\d'
+    phone = re.findall(phone_pattern, text)
+
+    # Extract name (simple approach: assuming first line contains the name)
+    lines = text.split('\n')
+    name = lines[0] if lines else "Unknown"
+
+    return {
+        'Name': name.strip(),
+        'Email': email[0] if email else "Not found",
+        'Phone': phone[0] if phone else "Not found"
+    }
+
+def main():
+    input_folder = "./input"
+    output_folder = "./cards"
+
+    # Create output folder if it doesn't exist
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    # Loop through all HEIC files in the input folder
+    for filename in os.listdir(input_folder):
+        if filename.lower().endswith(".heic"):
+            heic_path = os.path.join(input_folder, filename)
+            jpeg_path = os.path.join(output_folder, f"{os.path.splitext(filename)[0]}.jpg")
+            convert_heic_to_jpeg(heic_path, jpeg_path)
+            os.remove(heic_path)
+            print(f"Converted {filename} to JPEG, saved to {jpeg_path}, and deleted the original HEIC file.")
+
+    # Loop through all JPEG files in the output folder
+    for filename in os.listdir(output_folder):
+        if filename.lower().endswith(".jpg"):
+            jpeg_path = os.path.join(output_folder, filename)
+
+            # Preprocess image and extract text regions
+            rectangles = detect_text_regions(jpeg_path)
+            print(f"Detected text regions in {filename}: {rectangles}")
+
+            # Preprocess image
+            preprocessed_image = preprocess_image(jpeg_path)
+
+            # Extract text
+            extracted_text = extract_text(preprocessed_image)
+
+            # Parse contact details
+            contact_details = parse_contact_details(extracted_text)
+
+            # Display the extracted information
+            print("Extracted Contact Details:")
+            print(f"Name: {contact_details['Name']}")
+            print(f"Email: {contact_details['Email']}")
+            print(f"Phone: {contact_details['Phone']}")
+
+if __name__ == "__main__":
+    main()
