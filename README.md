@@ -90,7 +90,6 @@ Identifying the different elements on a business card can be a complex task due 
    - Consider integrating **spaCy** for NER to better classify text elements.
 4. **Iterative Refinement**: Manually validate a set of business cards to refine your extraction rules and improve your accuracy over time.
 
-If you'd like, I can help you integrate these strategies into your current project. Let me know if you'd like me to add any specific functionality!
 
 business_card_ocr/:
 	•	This is the main package of your project containing the application code.
