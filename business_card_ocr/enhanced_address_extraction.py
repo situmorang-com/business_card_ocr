@@ -32,8 +32,8 @@ def validate_addresses(extracted_text):
     return valid_addresses
 
 # Example usage with an OCR-extracted address
-ocr_images_folder = os.path.join(os.path.dirname(__file__), '..', 'ocr_images')
-example_image = os.path.join(ocr_images_folder, 'example_business_card.png')
+ocr_images_folder = os.path.join(os.path.dirname(__file__), '..', 'input')
+example_image = os.path.join(ocr_images_folder, 'example_business_card.jpg')
 
 # Extract text and validate addresses from the image
 extracted_text = extract_text_from_image(example_image)
