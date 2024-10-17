@@ -14,6 +14,8 @@ pyheif = "^0.8.0"
 spacy = "^3.8.2"
 faker = "^30.6.0"
 pandas = "^2.2.3"
+scikit-learn = "^1.5.2"
+imbalanced-learn = "^0.12.4"
 
 
 [build-system]

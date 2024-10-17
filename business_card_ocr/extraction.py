@@ -3,6 +3,9 @@ import re
 import cv2
 import numpy as np
 import spacy
+import os
+from .enhanced_address_extraction import validate_addresses
+
 
 # Load spaCy model for better entity recognition
 nlp = spacy.load("en_core_web_sm")
@@ -68,32 +71,38 @@ def parse_contact_details(text):
     phone_pattern = r'\+?\d[\d -]{8,}\d'
     phone = re.findall(phone_pattern, text)
 
-    # Extract address lines that contain keywords like 'Floor', 'Jl', 'Jalan', or 'Kav'
-    lines = text.split('\n')
-    address_lines = []
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
-        # Check if the line contains any address-related keyword
-        if any(keyword in line.lower() for keyword in ["floor", "jl", "jalan", "kav"]):
-            address_lines.append(line)
-            # Check the next few lines for city names, zip codes, or country names
-            j = i + 1
-            while j < len(lines):
-                next_line = lines[j].strip()
-                # Stop if the line contains phone number indicators or is unrelated
-                if re.search(r'\b(tel|mobile|fax)\b', next_line.lower()) or re.search(phone_pattern, next_line):
-                    break
-                # Continue adding if the line contains address-related elements
-                if re.search(r'\b\d{4,}\b', next_line) or any(keyword in next_line.lower() for keyword in ["indonesia", "jakarta", "selatan", "utara", "timur", "barat"]):
-                    address_lines.append(next_line)
-                    j += 1
-                else:
-                    break
-            i = j - 1  # Skip over the lines already added
-        i += 1
 
-    address = ", ".join(address_lines) if address_lines else "Not found"
+
+    # # Extract address lines that contain keywords like 'Floor', 'Jl', 'Jalan', or 'Kav'
+    # lines = text.split('\n')
+    # address_lines = []
+    # i = 0
+    # while i < len(lines):
+    #     line = lines[i].strip()
+    #     # Check if the line contains any address-related keyword
+    #     if any(keyword in line.lower() for keyword in ["floor", "jl", "jalan", "kav"]):
+    #         address_lines.append(line)
+    #         # Check the next few lines for city names, zip codes, or country names
+    #         j = i + 1
+    #         while j < len(lines):
+    #             next_line = lines[j].strip()
+    #             # Stop if the line contains phone number indicators or is unrelated
+    #             if re.search(r'\b(tel|mobile|fax)\b', next_line.lower()) or re.search(phone_pattern, next_line):
+    #                 break
+    #             # Continue adding if the line contains address-related elements
+    #             if re.search(r'\b\d{4,}\b', next_line) or any(keyword in next_line.lower() for keyword in ["indonesia", "jakarta", "selatan", "utara", "timur", "barat"]):
+    #                 address_lines.append(next_line)
+    #                 j += 1
+    #             else:
+    #                 break
+    #         i = j - 1  # Skip over the lines already added
+    #     i += 1
+
+    # address = ", ".join(address_lines) if address_lines else "Not found"
+
+
+    address = validate_addresses(text)
+
 
     # Define a list of words related to geography or common address elements
     geography_keywords = [

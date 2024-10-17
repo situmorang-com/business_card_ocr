@@ -20,4 +20,22 @@ with open(output_file, mode='w', encoding='utf-8', newline='') as out_csv:
         file_path = os.path.join(input_folder, file_name)
         
         # Check if the file is a CSV file
-        if os.path.isfile(file_path) and file_name.endswith('.
+        if os.path.isfile(file_path) and file_name.endswith('.csv'):
+            print(f'Processing file: {file_name}')
+            
+            # Open and read the CSV file
+            with open(file_path, mode='r', encoding='utf-8') as csv_file:
+                csv_reader = csv.DictReader(csv_file)
+                
+                # Write the 'alamat_usaha' column to the output file
+                for row in csv_reader:
+                    if 'alamat_usaha' in row:
+                        alamat_usaha = row['alamat_usaha']
+                        # Check if the data already has quotes
+                        if alamat_usaha.startswith('"') and alamat_usaha.endswith('"'):
+                            formatted_alamat = f'{alamat_usaha}, 1'
+                        else:
+                            formatted_alamat = f'"{alamat_usaha}", 1'
+                        csv_writer.writerow([formatted_alamat])
+
+print('All CSV files processed and alamat_usaha saved.')
